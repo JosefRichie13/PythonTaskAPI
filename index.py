@@ -1,3 +1,5 @@
+from typing import Union
+
 from fastapi import FastAPI, Response, status
 from pydantic import BaseModel
 import sqlite3
@@ -48,3 +50,27 @@ def addATask(addATaskBody: addATaskData, response: Response):
     cur.execute(queryToAddTask, valuesToAddTask)
     connection.commit()
     return {"status" : "Task added" }
+
+
+# Gets all Tasks, Tasks in Open status or Tasks in Done status
+@app.get("/getTasks")
+def getTasks(response: Response, taskstatus: Union[str, None] = None):
+
+    # Connects to the DB
+    getConnection = sqlite3.connect("PYTHONTASKAPP.db")
+    getCur = getConnection.cursor()
+
+    # Gets all the tasks
+    if taskstatus == "":
+        queryToCheckExistingTask = "SELECT * FROM PYTHONTASKAPP"
+        taskCheck = getCur.execute(queryToCheckExistingTask).fetchall()
+        return taskCheck
+    # Gets tasks which are in Open or Done State
+    elif taskstatus == "open" or taskstatus == "done":
+        queryToCheckExistingTask = "SELECT * FROM PYTHONTASKAPP WHERE TASKSTATUS = ?"
+        valuesToCheckExistingTask = [taskstatus]
+        taskCheck = getCur.execute(queryToCheckExistingTask, valuesToCheckExistingTask).fetchall()
+        return taskCheck
+    else:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"status" : "The provided query parameter is not supported" }
