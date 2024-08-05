@@ -3,7 +3,7 @@ import datetime
 import re
 
 # Sanitizes the string to avoid XSS vulnerabilities
-# Also removes any spaces in between the strings
+# Also removes any double spaces in between the strings
 def sanitizeString(inputString):
     santizedString = html.escape(inputString)
     santizedString = re.sub(' +', ' ', santizedString)
