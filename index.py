@@ -3,7 +3,7 @@ from typing import Union
 from fastapi import FastAPI, Response, status
 from pydantic import BaseModel
 import sqlite3
-from create import *
+from helpers import *
 
 app = FastAPI()
 
@@ -52,7 +52,7 @@ def addATask(addATaskBody: addATaskData, response: Response):
     return {"status" : "Task added" }
 
 
-# Gets all Tasks, Tasks in Open status or Tasks in Done status
+# Gets all Tasks, Tasks in Open status or Tasks in Done status. Taskstatus is an optional param
 @app.get("/getTasks")
 def getTasks(response: Response, taskstatus: Union[str, None] = None):
 
@@ -65,7 +65,7 @@ def getTasks(response: Response, taskstatus: Union[str, None] = None):
         queryToCheckExistingTask = "SELECT * FROM PYTHONTASKAPP"
         taskCheck = getCur.execute(queryToCheckExistingTask).fetchall()
         return taskCheck
-    # Gets tasks which are in Open or Done State
+    # Gets tasks which are in open or done State
     elif taskstatus == "open" or taskstatus == "done":
         queryToCheckExistingTask = "SELECT * FROM PYTHONTASKAPP WHERE TASKSTATUS = ?"
         valuesToCheckExistingTask = [taskstatus]
@@ -74,3 +74,42 @@ def getTasks(response: Response, taskstatus: Union[str, None] = None):
     else:
         response.status_code = status.HTTP_404_NOT_FOUND
         return {"status" : "The provided query parameter is not supported" }
+
+
+
+# Gets all Tasks of a date. Taskdate is a mandatory param, Taskstatus is an optional param
+@app.get("/getTasksByDate")
+def getTasksByDate(response: Response, taskdate: str, taskstatus: Union[str, None] = None):
+
+    # Connects to the DB
+    getConnection = sqlite3.connect("PYTHONTASKAPP.db")
+    getCur = getConnection.cursor()
+
+    # Checks the date format, if its incorrect returns a 400
+    if checkDateFormat(taskdate) == False:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return {"status" : taskdate + " is not a valid date or is not in DD-MMM-YYYY format, e.g., 05-Aug-2024. Please correct the date."}
+
+    # Gets the tasks which are in open or done state for the given date
+    if taskstatus == "open" or taskstatus == "done":
+        queryToCheckExistingTask = "SELECT * FROM PYTHONTASKAPP WHERE TASKDATE = ? AND TASKSTATUS = ?"
+        valuesToCheckExistingTask = (taskdate, taskstatus)
+        taskCheck = getCur.execute(queryToCheckExistingTask, valuesToCheckExistingTask).fetchall()
+        # This if block, checks if there are any tasks for the day
+        if len(taskCheck) == 0:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return {"status": "No task is scheduled on " + taskdate}
+        return taskCheck
+    # Gets all the tasks for the given date
+    elif taskdate != 0:
+        queryToCheckExistingTask = "SELECT * FROM PYTHONTASKAPP WHERE TASKDATE = ?"
+        valuesToCheckExistingTask = [taskdate]
+        taskCheck = getCur.execute(queryToCheckExistingTask, valuesToCheckExistingTask).fetchall()
+        # This if block, checks if there are any tasks for the day
+        if len(taskCheck) == 0:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return {"status": "No task is scheduled on " + taskdate}
+        return taskCheck
+    else:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"status" : "No task is scheduled on " + taskdate + " with the status " + taskstatus}
