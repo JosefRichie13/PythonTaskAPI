@@ -1,6 +1,6 @@
 # Backend for a ToDo App using FastAPI, SQLite and Python
 
-This repo has the code for a ToDo App Backend. It exposes the below API endpoints 
+This repo has the code for a ToDo App Backend. It exposes the below REST API endpoints 
 
 * POST /addTask
 * GET /getTasks
