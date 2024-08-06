@@ -13,7 +13,6 @@ class addATaskData(BaseModel):
     taskdate: str
     taskstatus: str
 
-
 # Adds a task using a POST call
 @app.post("/addTask")
 def addATask(addATaskBody: addATaskData, response: Response):
@@ -50,6 +49,7 @@ def addATask(addATaskBody: addATaskData, response: Response):
     cur.execute(queryToAddTask, valuesToAddTask)
     connection.commit()
     return {"status" : "Task added" }
+
 
 
 # Gets all Tasks, Tasks in Open status or Tasks in Done status. Taskstatus is an optional param
@@ -142,8 +142,6 @@ class updateATaskData(BaseModel):
     taskdate: str
     taskstatus: str
 
-
-
 # Updates a task using a PUT call
 @app.put("/updateTask")
 def updateTask(updateATaskBody: updateATaskData, taskID: str, response: Response):
@@ -183,3 +181,28 @@ def updateTask(updateATaskBody: updateATaskData, taskID: str, response: Response
         cur.execute(queryToUpdateExistingTask, valuesToUpdateExistingTask)
         putConnection.commit()
         return {"status" : "Task updated"}
+
+
+
+# Deletes a task using a DELETE call
+@app.delete("/deleteTask")
+def deleteTask(taskID: str, response: Response):
+
+    # Connects to the DB
+    delConnection = sqlite3.connect("PYTHONTASKAPP.db")
+    delCur = delConnection.cursor()
+
+    # Checks if the task exists
+    queryToCheckTask = "SELECT * FROM PYTHONTASKAPP WHERE ROWID = ?"
+    valuesToCheckTask = [taskID]
+    checkDelResult = delCur.execute(queryToCheckTask, valuesToCheckTask).fetchall()
+
+    # If the task exists, delete it or else return 404
+    if len(checkDelResult) > 0:
+        queryToDeleteTask = "DELETE FROM PYTHONTASKAPP WHERE ROWID = ?"
+        delCur.execute(queryToDeleteTask, valuesToCheckTask)
+        delConnection.commit()
+        return {"status": "Task with ID " + taskID + " is deleted"}
+    else:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"status": "No task with ID "+taskID+" found, please recheck"}
