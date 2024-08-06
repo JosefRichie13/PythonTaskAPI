@@ -113,3 +113,73 @@ def getTasksByDate(response: Response, taskdate: str, taskstatus: Union[str, Non
     else:
         response.status_code = status.HTTP_404_NOT_FOUND
         return {"status" : "No task is scheduled on " + taskdate + " with the status " + taskstatus}
+
+
+
+# Gets all Task ID of Task
+@app.get("/getTaskID")
+def getTasks(response: Response, taskname: str, taskdate: str, taskstatus: str):
+
+    # Connects to the DB
+    getConnection = sqlite3.connect("PYTHONTASKAPP.db")
+    getCur = getConnection.cursor()
+
+    queryToCheckExistingTaskID = "SELECT ROWID FROM PYTHONTASKAPP WHERE TASKNAME = ? AND TASKDATE = ? AND TASKSTATUS = ?"
+    valuesToCheckExistingTaskID = (taskname, taskdate, taskstatus)
+    taskID = getCur.execute(queryToCheckExistingTaskID, valuesToCheckExistingTaskID).fetchone()
+
+    if taskID is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"status": "No suck task found, please recheck"}
+    else:
+        return {"status": taskID}
+
+
+
+# Defining the body for updating a Task, it needs name of the task, date of the task, status of the task
+class updateATaskData(BaseModel):
+    taskname: str
+    taskdate: str
+    taskstatus: str
+
+
+
+# Updates a task using a PUT call
+@app.put("/updateTask")
+def updateTask(updateATaskBody: updateATaskData, taskID: str, response: Response):
+
+    sanitizedName = sanitizeString(updateATaskBody.taskname).strip()
+    sanitizedStatus = sanitizeString(updateATaskBody.taskstatus).strip()
+    sanitizedDate = checkDateFormat(updateATaskBody.taskdate)
+
+    if sanitizedDate == False:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return {"status" : updateATaskBody.taskdate + " is not a valid date or is not in DD-MMM-YYYY format, e.g., 05-Aug-2024. Please correct the date."}
+
+    putConnection = sqlite3.connect("PYTHONTASKAPP.db")
+    cur = putConnection.cursor()
+
+    # Checks if the task exists and if it does not, returns a 404
+    queryToCheckTheUpdate = "SELECT * FROM PYTHONTASKAPP WHERE ROWID = ?"
+    valuesToCheckTheUpdate = [taskID]
+    checkTheUpdate = cur.execute(queryToCheckTheUpdate, valuesToCheckTheUpdate).fetchone()
+
+    if checkTheUpdate is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"status": "No suck task found, please recheck"}
+    else:
+    # If the task exists, check if we are updating to an already existing task, if yes, return 422
+        queryToCheckExistingTask = "SELECT * FROM PYTHONTASKAPP WHERE TASKNAME = ? AND TASKDATE = ? AND TASKSTATUS = ?"
+        valuesToCheckExistingTask = (sanitizedName, updateATaskBody.taskdate, sanitizedStatus)
+        existingTaskCheck = cur.execute(queryToCheckExistingTask, valuesToCheckExistingTask).fetchall()
+        if len(existingTaskCheck) > 0:
+            response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+            return {
+                "status": "The task, " + sanitizedName + ", already exists on " + updateATaskBody.taskdate + ", with the status "+ sanitizedStatus +". Please recheck"}
+
+        # Update the task, if it exists and if we are not updating to an already existing task
+        queryToUpdateExistingTask = "UPDATE PYTHONTASKAPP SET TASKNAME = ?, TASKDATE = ?, TASKSTATUS = ? WHERE ROWID = ?"
+        valuesToUpdateExistingTask = (sanitizedName, updateATaskBody.taskdate, sanitizedStatus, taskID)
+        cur.execute(queryToUpdateExistingTask, valuesToUpdateExistingTask)
+        putConnection.commit()
+        return {"status" : "Task updated"}
