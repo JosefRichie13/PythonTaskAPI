@@ -7,6 +7,10 @@ from helpers import *
 
 app = FastAPI()
 
+@app.get("/")
+def landingPage():
+    return ("Hello, welcome to Task API in Python.")
+
 # Defining the body for adding a Task, it needs name of the task, date of the task, status of the task
 class addATaskData(BaseModel):
     taskname: str
