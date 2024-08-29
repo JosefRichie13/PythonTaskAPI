@@ -4,12 +4,13 @@ from fastapi import FastAPI, Response, status
 from pydantic import BaseModel
 import sqlite3
 from helpers import *
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 
 @app.get("/")
 def landingPage():
-    return ("Hello, welcome to Task API in Python.")
+    return FileResponse("PythonTaskApp.html")
 
 # Defining the body for adding a Task, it needs name of the task, date of the task, status of the task
 class addATaskData(BaseModel):
